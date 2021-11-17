@@ -285,8 +285,16 @@ if __name__ == "__main__":
     ap.add_argument('-bs', '--block_size', type=int, help='an integer value')
     ap.add_argument('-ni', '--max_num_inodes', type=int, help='an integer value')
     ap.add_argument('-is', '--inode_size', type=int, help='an integer value')
-    ap.add_argument('-port', '--port', type=int, help='an integer value')
     ap.add_argument('-cid', '--cid', type=int, help='an integer value')
+    ap.add_argument('-port0', '--port0', type=int, help='an integer value')
+    ap.add_argument('-port1', '--port1', type=int, help='an integer value')
+    ap.add_argument('-port2', '--port2', type=int, help='an integer value')
+    ap.add_argument('-port3', '--port3', type=int, help='an integer value')
+    ap.add_argument('-port4', '--port4', type=int, help='an integer value')
+    ap.add_argument('-port5', '--port5', type=int, help='an integer value')
+    ap.add_argument('-port6', '--port6', type=int, help='an integer value')
+    ap.add_argument('-port7', '--port7', type=int, help='an integer value')
+
 
     # Other than FS args, consecutive args will be captured in by 'arg' as list
     ap.add_argument('arg', nargs='*')

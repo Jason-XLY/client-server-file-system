@@ -56,7 +56,7 @@ if __name__ == "__main__":
         print('Must specify port number')
         quit()
 
-    if args.sid:
+    if args.sid >= 0:
         SERVER_ID = args.sid
     else:
         print('Must specify server ID')

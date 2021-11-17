@@ -98,14 +98,27 @@ class DiskBlocks():
             quit()
 
         # initialize XMLRPC client connection to raw block server
-        if args.port:
-            PORT = args.port
-        else:
-            print('Must specify port number')
-            quit()
-        server_url = 'http://' + SERVER_ADDRESS + ':' + str(PORT)
-        self.block_server = xmlrpc.client.ServerProxy(server_url, use_builtin_types=True)
-
+        PORT = []
+        self.block_server = []
+        if args.port0: PORT.append(args.port0)
+        if args.port1: PORT.append(args.port1)
+        if args.port2: PORT.append(args.port2)
+        if args.port3: PORT.append(args.port3)
+        if args.port4: PORT.append(args.port4)
+        if args.port5: PORT.append(args.port5)
+        if args.port6: PORT.append(args.port6)
+        if args.port7: PORT.append(args.port7)
+        for port in PORT:
+            server_url = 'http://' + SERVER_ADDRESS + ':' + str(port)
+            self.block_server.append(xmlrpc.client.ServerProxy(server_url, use_builtin_types=True))
+        # if args.port:
+        #     PORT = args.port
+        # else:
+        #     print('Must specify port number')
+        #     quit()
+        # server_url = 'http://' + SERVER_ADDRESS + ':' + str(PORT)
+        # self.block_server = xmlrpc.client.ServerProxy(server_url, use_builtin_types=True)
+        self.num_servers = len(PORT)
         self.HandleFSConstants(args)
 
         self.blockcache = {}
@@ -188,7 +201,8 @@ class DiskBlocks():
             # commenting this out as the request now goes to the server
             # self.block[block_number] = putdata
             # call Put() method on the server and check for error
-            ret = self.block_server.Put(block_number, putdata)
+            server_idx, block_idx = self.C2S(block_number)
+            ret = self.block_server[server_idx].Put(block_idx, putdata)
             if ret == -1:
                 logging.error('Put: Server returns error')
                 quit()
@@ -208,7 +222,8 @@ class DiskBlocks():
             # commenting this out as the request now goes to the server
             # return self.block[block_number]
             # call Get() method on the server
-            data = self.block_server.Get(block_number)
+            server_idx, block_idx = self.C2S(block_number)
+            data = self.block_server[server_idx].Get(block_idx)
             # return as bytearray
             return bytearray(data)
 
@@ -221,11 +236,19 @@ class DiskBlocks():
 
         logging.debug('RSM: ' + str(block_number))
         if block_number in range(0, TOTAL_NUM_BLOCKS):
-            data = self.block_server.RSM(block_number)
+            server_idx, block_idx = self.C2S(block_number)
+            data = self.block_server[server_idx].RSM(block_idx)
             return bytearray(data)
 
         logging.error('RSM: Block number larger than TOTAL_NUM_BLOCKS: ' + str(block_number))
         quit()
+
+    ## C2S: map client block to server block
+
+    def C2S(self, block_number):
+        server_idx = block_number % self.num_servers
+        block_idx = block_number / self.num_servers
+        return server_idx, int(block_idx)
 
     ## Acquire and Release using a disk block lock
 
