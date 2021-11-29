@@ -1,7 +1,8 @@
 import pickle, logging
+import socket
 import xmlrpc.client
 
-# For locks: RSM_UNLOCKED=0 , RSM_LOCKED=1 
+# For locks: RSM_UNLOCKED=0 , RSM_LOCKED=1
 RSM_UNLOCKED = bytearray(b'\x00') * 1
 RSM_LOCKED = bytearray(b'\x01') * 1
 RSM_BLOCK = 0
@@ -108,6 +109,7 @@ class DiskBlocks():
         if args.port5: PORT.append(args.port5)
         if args.port6: PORT.append(args.port6)
         if args.port7: PORT.append(args.port7)
+
         for port in PORT:
             server_url = 'http://' + SERVER_ADDRESS + ':' + str(port)
             self.block_server.append(xmlrpc.client.ServerProxy(server_url, use_builtin_types=True))
@@ -118,7 +120,7 @@ class DiskBlocks():
         #     quit()
         # server_url = 'http://' + SERVER_ADDRESS + ':' + str(PORT)
         # self.block_server = xmlrpc.client.ServerProxy(server_url, use_builtin_types=True)
-        self.num_servers = len(PORT)
+        self.num_servers = len(PORT)-1
         self.HandleFSConstants(args)
 
         self.blockcache = {}
@@ -202,14 +204,28 @@ class DiskBlocks():
             # self.block[block_number] = putdata
             # call Put() method on the server and check for error
             server_idx, block_idx = self.C2S(block_number)
-            ret = self.block_server[server_idx].Put(block_idx, putdata)
-            if ret == -1:
-                logging.error('Put: Server returns error')
-                quit()
+            old_data = self.Get(block_number)
+            old_parity = self.block_server[-1].Get(block_idx)
+            new_parity = self.XOR(self.XOR(old_data, old_parity), putdata)
+            try:
+                self.block_server[server_idx].Put(block_idx, putdata)
+            except socket.error:
+                pass
+                # logging.error('Put: Server returns error')
+                # quit()
+            try:
+                self.block_server[-1].Put(block_idx, new_parity)
+            except socket.error:
+                pass
+                # logging.error('Put: Parity returns error')
+                # quit()
             return 0
         else:
             logging.error('Put: Block out of range: ' + str(block_number))
             quit()
+
+    def XOR(self, a, b):
+        return bytearray(a ^ b for (a, b) in zip(a, b))
 
     ## Get: interface to read a raw block of data from block indexed by block number
     ## Equivalent to the textbook's BLOCK_NUMBER_TO_BLOCK(b)
@@ -223,12 +239,24 @@ class DiskBlocks():
             # return self.block[block_number]
             # call Get() method on the server
             server_idx, block_idx = self.C2S(block_number)
-            data = self.block_server[server_idx].Get(block_idx)
+            try:
+                data = self.block_server[server_idx].Get(block_idx)
+            except:
+                # print("Server fucked up")
+                data = self.Corruption(server_idx, block_idx)
             # return as bytearray
             return bytearray(data)
 
         logging.error('ServerGet: Block number larger than TOTAL_NUM_BLOCKS: ' + str(block_number))
         quit()
+
+    def Corruption(self, server_idx, block_idx):
+        parity = self.block_server[-1].Get(block_idx)
+        for i in range(self.num_servers):
+            if i == server_idx:
+                continue
+            parity = self.XOR(parity, self.block_server[i].Get(block_idx))
+        return parity
 
     ## RSM: read and set memory equivalent
 
@@ -251,23 +279,23 @@ class DiskBlocks():
         return server_idx, int(block_idx)
 
     ## Acquire and Release using a disk block lock
-
-    def Acquire(self):
-
-        logging.debug('Acquire')
-        lockvalue = self.RSM(RSM_BLOCK)
-        logging.debug("RSM_BLOCK Lock value: " + str(lockvalue))
-        while lockvalue[0] == 1:  # test just first byte of block to check if RSM_LOCKED
-            logging.debug("Acquire: spinning...")
-            lockvalue = self.RSM(RSM_BLOCK)
-        return 0
-
-    def Release(self):
-
-        logging.debug('Release')
-        # Put()s a zero-filled block to release lock
-        self.Put(RSM_BLOCK, bytearray(RSM_UNLOCKED.ljust(BLOCK_SIZE, b'\x00')))
-        return 0
+    #
+    # def Acquire(self):
+    #
+    #     logging.debug('Acquire')
+    #     lockvalue = self.RSM(RSM_BLOCK)
+    #     logging.debug("RSM_BLOCK Lock value: " + str(lockvalue))
+    #     while lockvalue[0] == 1:  # test just first byte of block to check if RSM_LOCKED
+    #         logging.debug("Acquire: spinning...")
+    #         lockvalue = self.RSM(RSM_BLOCK)
+    #     return 0
+    #
+    # def Release(self):
+    #
+    #     logging.debug('Release')
+    #     # Put()s a zero-filled block to release lock
+    #     self.Put(RSM_BLOCK, bytearray(RSM_UNLOCKED.ljust(BLOCK_SIZE, b'\x00')))
+    #     return 0
 
     ## Check if block cache needs to be invalidated
 
