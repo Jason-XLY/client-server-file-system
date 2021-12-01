@@ -304,8 +304,8 @@ if __name__ == "__main__":
     # Initialize empty file system data
     logging.info('Initializing data structures...')
     RawBlocks = DiskBlocks(args)
-    boot_block = b'\x00\x12\x34\x56'  # constant 00123456 stored as beginning of boot block; no need to change this
-    RawBlocks.InitializeBlocks(boot_block)
+    # boot_block = b'\x00\x12\x34\x56'  # constant 00123456 stored as beginning of boot block; no need to change this
+    # RawBlocks.InitializeBlocks(boot_block)
 
     # Print file system information and contents of first few blocks to memoryfs.log
     RawBlocks.PrintFSInfo()

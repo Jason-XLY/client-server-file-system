@@ -120,7 +120,7 @@ class DiskBlocks():
         #     quit()
         # server_url = 'http://' + SERVER_ADDRESS + ':' + str(PORT)
         # self.block_server = xmlrpc.client.ServerProxy(server_url, use_builtin_types=True)
-        self.num_servers = len(PORT)-1
+        self.num_servers = len(PORT)
         self.HandleFSConstants(args)
 
         self.blockcache = {}
@@ -203,9 +203,9 @@ class DiskBlocks():
             # commenting this out as the request now goes to the server
             # self.block[block_number] = putdata
             # call Put() method on the server and check for error
-            server_idx, block_idx = self.C2S(block_number)
-            old_data = self.Get(block_number)
-            old_parity = self.block_server[-1].Get(block_idx)
+            server_idx, block_idx, parity_idx = self.C2S(block_number)
+            old_data = self.ServerGet(server_idx, block_idx)
+            old_parity = self.ServerGet(parity_idx, block_idx)
             new_parity = self.XOR(self.XOR(old_data, old_parity), putdata)
             try:
                 self.block_server[server_idx].Put(block_idx, putdata)
@@ -214,7 +214,7 @@ class DiskBlocks():
                 # logging.error('Put: Server returns error')
                 # quit()
             try:
-                self.block_server[-1].Put(block_idx, new_parity)
+                self.block_server[parity_idx].Put(block_idx, new_parity)
             except socket.error:
                 pass
                 # logging.error('Put: Parity returns error')
@@ -230,7 +230,7 @@ class DiskBlocks():
     ## Get: interface to read a raw block of data from block indexed by block number
     ## Equivalent to the textbook's BLOCK_NUMBER_TO_BLOCK(b)
 
-    def ServerGet(self, block_number):
+    def ServerGet(self, server_idx, block_number):
 
         logging.debug('ServerGet: ' + str(block_number))
         if block_number in range(0, TOTAL_NUM_BLOCKS):
@@ -238,45 +238,59 @@ class DiskBlocks():
             # commenting this out as the request now goes to the server
             # return self.block[block_number]
             # call Get() method on the server
-            server_idx, block_idx = self.C2S(block_number)
+            # server_idx, block_idx, parity_idx = self.C2S(block_number)
             try:
-                data = self.block_server[server_idx].Get(block_idx)
+                data, Corrupt = self.block_server[server_idx].Get(block_number)
+                if Corrupt:
+                    print("Get: block " + str(block_number) + " is damaged")
+                    data = self.Corruption(server_idx, block_number)
             except:
                 # print("Server fucked up")
-                data = self.Corruption(server_idx, block_idx)
+                print("Get: server " + str(server_idx) + " is failed")
+                data = self.Corruption(server_idx, block_number)
             # return as bytearray
             return bytearray(data)
 
         logging.error('ServerGet: Block number larger than TOTAL_NUM_BLOCKS: ' + str(block_number))
         quit()
 
-    def Corruption(self, server_idx, block_idx):
-        parity = self.block_server[-1].Get(block_idx)
-        for i in range(self.num_servers):
+    def Corruption(self, server_idx, block_number):
+        # parity = self.block_server[-1].Get(block_idx)
+        if server_idx == 0:
+            data = self.ServerGet(1, block_number)
+            start = 2
+        else:
+            data = self.ServerGet(0, block_number)
+            start = 1
+        for i in range(start, self.num_servers):
             if i == server_idx:
                 continue
-            parity = self.XOR(parity, self.block_server[i].Get(block_idx))
-        return parity
+            data = self.XOR(data, self.ServerGet(i, block_number))
+            # parity = self.XOR(parity, self.block_server[i].Get(block_idx))
+        return data
 
     ## RSM: read and set memory equivalent
 
-    def RSM(self, block_number):
-
-        logging.debug('RSM: ' + str(block_number))
-        if block_number in range(0, TOTAL_NUM_BLOCKS):
-            server_idx, block_idx = self.C2S(block_number)
-            data = self.block_server[server_idx].RSM(block_idx)
-            return bytearray(data)
-
-        logging.error('RSM: Block number larger than TOTAL_NUM_BLOCKS: ' + str(block_number))
-        quit()
+    # def RSM(self, block_number):
+    #
+    #     logging.debug('RSM: ' + str(block_number))
+    #     if block_number in range(0, TOTAL_NUM_BLOCKS):
+    #         server_idx, block_idx = self.C2S(block_number)
+    #         data = self.block_server[server_idx].RSM(block_idx)
+    #         return bytearray(data)
+    #
+    #     logging.error('RSM: Block number larger than TOTAL_NUM_BLOCKS: ' + str(block_number))
+    #     quit()
 
     ## C2S: map client block to server block
 
     def C2S(self, block_number):
-        server_idx = block_number % self.num_servers
-        block_idx = block_number / self.num_servers
-        return server_idx, int(block_idx)
+        server_idx = block_number % (self.num_servers - 1)
+        block_idx = int(block_number / (self.num_servers - 1))
+        parity_idx = self.num_servers - 1 - (block_idx % self.num_servers)
+        if server_idx >= parity_idx:
+            server_idx = server_idx + 1
+        return server_idx, int(block_idx), int(parity_idx)
 
     ## Acquire and Release using a disk block lock
     #
@@ -303,7 +317,8 @@ class DiskBlocks():
 
         logging.debug('CheckAndInvalidate')
         # Fetch block with invalidation information from server
-        invalidate_block = self.ServerGet(INVALIDATE_BLOCK)
+        s_id, b_id, p_id = self.C2S(INVALIDATE_BLOCK)
+        invalidate_block = self.ServerGet(s_id, b_id)
         # Extract state for this client
         my_invalid_state = invalidate_block[INVALIDATE_BYTE_OFFSET + self.clientID]
         if my_invalid_state:
@@ -324,7 +339,8 @@ class DiskBlocks():
         logging.debug('ForceInvalidate')
         print("CacheInvalidationIssued")
         # Fetch block with invalidation information from server
-        invalidate_block = self.ServerGet(INVALIDATE_BLOCK)
+        s_id, b_id, p_id = self.C2S(INVALIDATE_BLOCK)
+        invalidate_block = self.ServerGet(s_id, b_id)
         logging.debug('ForceInvalidate: type is' + str(type(invalidate_block)))
         # Fill in invalidate_value=1 for all clients
         for i in range(0, MAX_CLIENTS):
@@ -348,7 +364,8 @@ class DiskBlocks():
             else:
                 logging.debug('Get: cache miss for ' + str(block_number))
                 # call Get() method on the server
-                data = self.ServerGet(block_number)
+                server_idx, block_idx, parity_idx = self.C2S(block_number)
+                data = self.ServerGet(server_idx, block_idx)
                 # convert to bytearray
                 result = bytearray(data)
                 # store to cache

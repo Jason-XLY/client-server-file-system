@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     def Get(block_number):
         bad_block = False
-        if hashlib.md5(bytearray(str(RawBlocks.block[0]), 'utf-8')).digest() != RawBlocks.checksum[block_number]:
+        if hashlib.md5(bytearray(str(RawBlocks.block[block_number]), 'utf-8')).digest() != RawBlocks.checksum[block_number]:
             bad_block = True
         if Corrupt and block_number == BLOCK_ID:
             return bytearray(BLOCK_SIZE), Corrupt
