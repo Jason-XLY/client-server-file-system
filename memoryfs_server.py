@@ -1,3 +1,4 @@
+import hashlib
 import pickle, logging
 import argparse
 
@@ -18,10 +19,12 @@ class DiskBlocks():
     def __init__(self, total_num_blocks, block_size):
         # This class stores the raw block array
         self.block = []
+        self.checksum = []
         # Initialize raw blocks
         for i in range(0, total_num_blocks):
             putdata = bytearray(block_size)
             self.block.insert(i, putdata)
+            self.checksum.insert(i, hashlib.md5(bytes(str(putdata), 'utf-8')).digest())
 
 
 if __name__ == "__main__":
@@ -68,6 +71,14 @@ if __name__ == "__main__":
         print('Must specify number of servers')
         quit()
 
+    Corrupt = False
+
+    if args.corrupted_block:
+        BLOCK_ID = args.corrupted_block
+        Corrupt = True
+    else:
+        pass
+
     # args.corrupted_block
 
     # initialize blocks
@@ -78,15 +89,19 @@ if __name__ == "__main__":
 
 
     def Get(block_number):
+        bad_block = False
+        if hashlib.md5(bytearray(str(RawBlocks.block[0]), 'utf-8')).digest() != RawBlocks.checksum[block_number]:
+            bad_block = True
+        if Corrupt and block_number == BLOCK_ID:
+            return bytearray(BLOCK_SIZE), Corrupt
         result = RawBlocks.block[block_number]
-        return result
-
+        return result, bad_block
 
     server.register_function(Get)
 
-
     def Put(block_number, data):
         RawBlocks.block[block_number] = data
+        RawBlocks.checksum[block_number] = hashlib.md5(data.data).digest()
         return 0
 
 
