@@ -14,6 +14,13 @@ class FSShell():
         self.cwd = 0
         self.FileObject = file
 
+    def repair(self, server_id):
+        server_id = int(server_id)
+        for i in range(256):
+            block = self.FileObject.RawBlocks.Corruption(server_id, i)
+            data = bytearray(block)
+            self.FileObject.RawBlocks.block_server[server_id].Put(i, data)
+
     # implements cd (change directory)
     def cd(self, dir):
         # i = self.FileObject.Lookup(dir,self.cwd)
@@ -242,6 +249,11 @@ class FSShell():
                 # self.FileObject.RawBlocks.CheckAndInvalidate()
                 self.ls()
                 # self.FileObject.RawBlocks.Release()
+            elif splitcmd[0] == "repair":
+                if len(splitcmd) != 2:
+                    print("Error: repair requires one argument")
+                else:
+                    self.repair(splitcmd[1])
             elif splitcmd[0] == "showblock":
                 if len(splitcmd) != 2:
                     print("Error: showblock requires one argument")
