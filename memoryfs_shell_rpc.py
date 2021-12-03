@@ -14,9 +14,13 @@ class FSShell():
         self.cwd = 0
         self.FileObject = file
 
+    def showload(self):
+        for i in range(self.FileObject.RawBlocks.num_servers):
+            print("Server " + str(i) + " has load: " + str(self.FileObject.RawBlocks.load[i]))
+
     def repair(self, server_id):
         server_id = int(server_id)
-        for i in range(256):
+        for i in range(int(TOTAL_NUM_BLOCKS / (self.FileObject.RawBlocks.num_servers - 1))):
             block = self.FileObject.RawBlocks.Corruption(server_id, i)
             data = bytearray(block)
             self.FileObject.RawBlocks.block_server[server_id].Put(i, data)
@@ -189,7 +193,7 @@ class FSShell():
                     print("Error: cd requires one argument")
                 else:
                     # self.FileObject.RawBlocks.Acquire()
-                    # self.FileObject.RawBlocks.CheckAndInvalidate()
+                    self.FileObject.RawBlocks.CheckAndInvalidate()
                     self.cd(splitcmd[1])
                     # self.FileObject.RawBlocks.Release()
             elif splitcmd[0] == "cat":
@@ -197,7 +201,7 @@ class FSShell():
                     print("Error: cat requires one argument")
                 else:
                     # self.FileObject.RawBlocks.Acquire()
-                    # self.FileObject.RawBlocks.CheckAndInvalidate()
+                    self.FileObject.RawBlocks.CheckAndInvalidate()
                     self.cat(splitcmd[1])
                     # self.FileObject.RawBlocks.Release()
             elif splitcmd[0] == "mkdir":
@@ -205,7 +209,7 @@ class FSShell():
                     print("Error: mkdir requires one argument")
                 else:
                     # self.FileObject.RawBlocks.Acquire()
-                    # self.FileObject.RawBlocks.CheckAndInvalidate()
+                    self.FileObject.RawBlocks.CheckAndInvalidate()
                     self.mkdir(splitcmd[1])
                     self.FileObject.RawBlocks.ForceInvalidate()
                     # self.FileObject.RawBlocks.Release()
@@ -214,7 +218,7 @@ class FSShell():
                     print("Error: create requires one argument")
                 else:
                     # self.FileObject.RawBlocks.Acquire()
-                    # self.FileObject.RawBlocks.CheckAndInvalidate()
+                    self.FileObject.RawBlocks.CheckAndInvalidate()
                     self.create(splitcmd[1])
                     self.FileObject.RawBlocks.ForceInvalidate()
                     # self.FileObject.RawBlocks.Release()
@@ -223,7 +227,7 @@ class FSShell():
                     print("Error: ln requires two arguments")
                 else:
                     # self.FileObject.RawBlocks.Acquire()
-                    # self.FileObject.RawBlocks.CheckAndInvalidate()
+                    self.FileObject.RawBlocks.CheckAndInvalidate()
                     self.link(splitcmd[1], splitcmd[2])
                     self.FileObject.RawBlocks.ForceInvalidate()
                     # self.FileObject.RawBlocks.Release()
@@ -232,7 +236,7 @@ class FSShell():
                     print("Error: chroot requires one argument")
                 else:
                     # self.FileObject.RawBlocks.Acquire()
-                    # self.FileObject.RawBlocks.CheckAndInvalidate()
+                    self.FileObject.RawBlocks.CheckAndInvalidate()
                     self.chroot(splitcmd[1])
                     # self.FileObject.RawBlocks.Release()
             elif splitcmd[0] == "append":
@@ -240,15 +244,17 @@ class FSShell():
                     print("Error: append requires two arguments")
                 else:
                     # self.FileObject.RawBlocks.Acquire()
-                    # self.FileObject.RawBlocks.CheckAndInvalidate()
+                    self.FileObject.RawBlocks.CheckAndInvalidate()
                     self.append(splitcmd[1], splitcmd[2])
                     self.FileObject.RawBlocks.ForceInvalidate()
                     # self.FileObject.RawBlocks.Release()
             elif splitcmd[0] == "ls":
                 # self.FileObject.RawBlocks.Acquire()
-                # self.FileObject.RawBlocks.CheckAndInvalidate()
+                self.FileObject.RawBlocks.CheckAndInvalidate()
                 self.ls()
                 # self.FileObject.RawBlocks.Release()
+            elif splitcmd[0] == "showload":
+                self.showload()
             elif splitcmd[0] == "repair":
                 if len(splitcmd) != 2:
                     print("Error: repair requires one argument")

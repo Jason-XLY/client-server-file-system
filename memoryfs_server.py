@@ -37,7 +37,6 @@ if __name__ == "__main__":
     ap.add_argument('-port', '--port', type=int, help='an integer value')
     ap.add_argument('-sid', '--sid', type=int, help='an integer value')
     ap.add_argument('-cblk', '--corrupted_block', type=int, help='an integer value')
-    ap.add_argument('-ns', '--num_servers', type=int, help='an integer value')
 
     args = ap.parse_args()
 
@@ -63,12 +62,6 @@ if __name__ == "__main__":
         SERVER_ID = args.sid
     else:
         print('Must specify server ID')
-        quit()
-
-    if args.num_servers:
-        NUM_SERVERS = args.num_servers
-    else:
-        print('Must specify number of servers')
         quit()
 
     Corrupt = False
@@ -101,7 +94,7 @@ if __name__ == "__main__":
 
     def Put(block_number, data):
         RawBlocks.block[block_number] = data
-        RawBlocks.checksum[block_number] = hashlib.md5(data.data).digest()
+        RawBlocks.checksum[block_number] = hashlib.md5(bytearray(str(data), 'utf-8')).digest()
         return 0
 
 

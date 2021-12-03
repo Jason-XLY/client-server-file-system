@@ -98,6 +98,12 @@ class DiskBlocks():
             print('Must specify valid cid')
             quit()
 
+        if args.num_servers:
+            self.num_servers = args.num_servers
+        else:
+            print('Must specify number of servers')
+            quit()
+
         # initialize XMLRPC client connection to raw block server
         PORT = []
         self.block_server = []
@@ -125,6 +131,7 @@ class DiskBlocks():
 
         self.blockcache = {}
 
+        self.load = [0 for _ in range(self.num_servers)]
         ## The rest below is commented out, as the blocks are stored/initialized on the server
         # This class stores the raw block array
         # self.block = []
@@ -209,12 +216,14 @@ class DiskBlocks():
             new_parity = self.XOR(self.XOR(old_data, old_parity), putdata)
             try:
                 self.block_server[server_idx].Put(block_idx, putdata)
+                self.load[server_idx] += 1
             except socket.error:
                 pass
                 # logging.error('Put: Server returns error')
                 # quit()
             try:
                 self.block_server[parity_idx].Put(block_idx, new_parity)
+                self.load[parity_idx] += 1
             except socket.error:
                 pass
                 # logging.error('Put: Parity returns error')
@@ -241,6 +250,7 @@ class DiskBlocks():
             # server_idx, block_idx, parity_idx = self.C2S(block_number)
             try:
                 data, Corrupt = self.block_server[server_idx].Get(block_number)
+                self.load[server_idx] += 1
                 if Corrupt:
                     print("Get: block " + str(block_number) + " is damaged")
                     data = self.Corruption(server_idx, block_number)
