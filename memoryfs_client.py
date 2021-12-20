@@ -252,11 +252,11 @@ class DiskBlocks():
                 data, Corrupt = self.block_server[server_idx].Get(block_number)
                 self.load[server_idx] += 1
                 if Corrupt:
-                    print("Get: block " + str(block_number) + " is damaged")
+                    # print("Get: block " + str(block_number) + " is damaged")
                     data = self.Corruption(server_idx, block_number)
             except:
                 # print("Server fucked up")
-                print("Get: server " + str(server_idx) + " is failed")
+                # print("Get: server " + str(server_idx) + " is failed")
                 data = self.Corruption(server_idx, block_number)
             # return as bytearray
             return bytearray(data)
